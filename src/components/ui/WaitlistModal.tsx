@@ -1,20 +1,19 @@
 'use client';
 
-import React from 'react';
-import { PopupButton } from '@typeform/embed-react';
+import { useEffect } from 'react';
 
-interface WaitlistModalProps {
-  typeformId: string;
-}
+const WaitlistModal: React.FC = () => {
+  useEffect(() => {
+    window.location.href = 'https://form.typeform.com/to/joPRdzLJ';
+  }, []);
 
-const WaitlistModal: React.FC<WaitlistModalProps> = ({ typeformId }) => {
   return (
-    <PopupButton
-      id={typeformId}
-      className="w-full"
-    >
-      Join the Waitlist
-    </PopupButton>
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <h2 className="text-lg font-semibold mb-2">Redirecting to Waitlist...</h2>
+        <p className="text-sm text-gray-600">Please wait...</p>
+      </div>
+    </div>
   );
 };
 

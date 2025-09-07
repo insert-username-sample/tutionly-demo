@@ -53,7 +53,7 @@ const VOICE_CONFIGURATIONS = {
 export function configureAssistant(
   voiceConfig: VoiceConfig, 
   assistantConfig: AssistantConfig,
-  assistantOverrides?: any
+  assistantOverrides?: Record<string, unknown>
 ) {
   // Get the appropriate voice ID based on voice and style preferences
   const voiceKey = `${voiceConfig.voice}_${voiceConfig.style}` as keyof typeof VOICE_CONFIGURATIONS;

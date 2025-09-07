@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Play, Pause, Volume2, VolumeX, MessageSquare, BookOpen, Calculator, PenTool, Upload, FileText, Mic, MicOff, Phone, PhoneOff, Users, Moon, Sun } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Calculator, PenTool, Upload, FileText, Mic, MicOff, Moon, Sun } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import GlassCard from '@/components/ui/GlassCard';
@@ -14,10 +14,8 @@ const DemoPage: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
   const { logoSrc, logoAlt } = useLogo();
   const [isConnected, setIsConnected] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
   const [isMicOn, setIsMicOn] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
   const [isAISpeaking, setIsAISpeaking] = useState(false);
   const [userAudioLevels, setUserAudioLevels] = useState([4, 4, 4, 4, 4]);
@@ -148,29 +146,6 @@ const DemoPage: React.FC = () => {
     });
   }, [drawings, isDark]);
 
-  // Remove old simulation - now using real VAPI integration
-  // Simulate voice activity
-  /*
-  React.useEffect(() => {
-    if (!isConnected) return;
-    
-    const interval = setInterval(() => {
-      // Randomly simulate voice activity
-      const shouldActivate = Math.random() > 0.7;
-      setIsVoiceActive(shouldActivate);
-      
-      if (shouldActivate) {
-        // Generate random audio levels
-        const newLevels = Array.from({ length: 5 }, () => Math.random() * 100 + 10);
-        setAudioLevels(newLevels);
-      } else {
-        setAudioLevels([4, 4, 4, 4, 4]);
-      }
-    }, 500);
-    
-    return () => clearInterval(interval);
-  }, [isConnected]);
-  */
 
   // VAPI Integration
   useEffect(() => {
@@ -202,47 +177,52 @@ const DemoPage: React.FC = () => {
           setUserAudioLevels(levels);
         }
       },
-      onMessage: (message) => {
+      onMessage: (message: unknown) => {
         console.log('VAPI Message:', message);
-        
+        const typedMessage = message as { type: string; transcript?: string; role?: string; conversation?: { role: string; message?: string; content?: string }[] };
+
         // Handle different message types
-        if (message.type === 'function-call-result' || message.type === 'transcript') {
+        if (typedMessage.type === 'function-call-result' || typedMessage.type === 'transcript') {
           // Handle transcribed user speech
-          if (message.transcript && message.role === 'user') {
-            setMessages(prev => [...prev, {
+          if (typedMessage.transcript && typedMessage.role === 'user') {
+            const newMessage = {
               id: Date.now().toString(),
-              sender: 'user',
-              content: message.transcript,
+              sender: 'user' as const,
+              content: typedMessage.transcript,
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }]);
-          }
-        } else if (message.type === 'conversation-update') {
-          // Handle AI responses
-          const lastMessage = message.conversation[message.conversation.length - 1];
-          if (lastMessage && lastMessage.role === 'assistant') {
-            setMessages(prev => [...prev, {
-              id: Date.now().toString(),
-              sender: 'ai',
-              content: lastMessage.message || lastMessage.content,
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }]);
-            
-            // Simulate AI speaking animation
-            setIsAISpeaking(true);
-            const duration = (lastMessage.message || lastMessage.content || '').length * 50;
-            
-            const animateAI = () => {
-              const levels = Array.from({ length: 5 }, () => Math.random() * 40 + 15);
-              setAiAudioLevels(levels);
             };
-            
-            const aiInterval = setInterval(animateAI, 150);
-            
-            setTimeout(() => {
-              clearInterval(aiInterval);
-              setIsAISpeaking(false);
-              setAiAudioLevels([4, 4, 4, 4, 4]);
-            }, duration);
+            setMessages(prev => [...prev, newMessage]);
+          }
+        } else if (typedMessage.type === 'conversation-update') {
+          // Handle AI responses
+          if (typedMessage.conversation) {
+            const lastMessage = typedMessage.conversation[typedMessage.conversation.length - 1];
+            if (lastMessage && lastMessage.role === 'assistant') {
+              const content = lastMessage.message || lastMessage.content || '';
+              setMessages(prev => [...prev, {
+                id: Date.now().toString(),
+                sender: 'ai',
+                content: content,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }]);
+
+              // Simulate AI speaking animation
+              setIsAISpeaking(true);
+              const duration = content.length * 50;
+
+              const animateAI = () => {
+                const levels = Array.from({ length: 5 }, () => Math.random() * 40 + 15);
+                setAiAudioLevels(levels);
+              };
+
+              const aiInterval = setInterval(animateAI, 150);
+
+              setTimeout(() => {
+                clearInterval(aiInterval);
+                setIsAISpeaking(false);
+                setAiAudioLevels([4, 4, 4, 4, 4]);
+              }, duration);
+            }
           }
         }
       },
@@ -275,10 +255,6 @@ const DemoPage: React.FC = () => {
         const result = await vapi.start('Math Tutorly'); // Use your assistant ID if you have one
         console.log('VAPI connection result:', result);
         
-        if (result.demo) {
-          console.log('Running in demo mode due to connection issues');
-          setIsDemoMode(true);
-        }
         if (!result.success) {
           throw new Error('Failed to connect to Math Tutorly assistant');
         }
@@ -315,12 +291,6 @@ const DemoPage: React.FC = () => {
     vapi.setMuted(!newMicState);
   };
 
-  const handleMuteToggle = () => {
-    setIsMuted(!isMuted);
-    // Handle audio output muting - this would control speaker output
-    // VAPI doesn't have built-in speaker mute, so this is local to the UI
-  };
-
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -350,9 +320,11 @@ const DemoPage: React.FC = () => {
           </Link>
           
           <div className="flex items-center gap-6">
-            <img
+            <Image
               src={logoSrc}
               alt={logoAlt}
+              width={128}
+              height={32}
               className="h-8 w-auto"
             />
             <h1 className="text-2xl font-bold text-gradient">
@@ -510,7 +482,7 @@ const DemoPage: React.FC = () => {
                         onClick={handleConnectionToggle}
                       >
                         <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-white/30 transition-all duration-300">
-                          <Users size={32} className="text-white" />
+                          <Mic size={32} className="text-white" />
                         </div>
                         <p className="text-white font-medium">Join Live Class</p>
                       </motion.div>
@@ -540,7 +512,7 @@ const DemoPage: React.FC = () => {
                   {/* Tutor Info */}
                   <div className="absolute bottom-4 left-4 flex items-center gap-3">
                     <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                      <BookOpen size={20} className="text-white" />
+                      <PenTool size={20} className="text-white" />
                     </div>
                     <div>
                       <p className="text-white font-semibold">Math Tutorly</p>
@@ -564,15 +536,6 @@ const DemoPage: React.FC = () => {
                       {isConnecting ? 'Connecting...' : isConnected ? 'Disconnect' : 'Join Class'}
                     </Button>
                     
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleMuteToggle}
-                      icon={isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                      className={isMuted ? 'text-red-500' : ''}
-                    >
-                      {isMuted ? 'Unmute' : 'Mute'}
-                    </Button>
                   </div>
                   
                   <Button
@@ -654,8 +617,8 @@ const DemoPage: React.FC = () => {
                           isDark ? 'text-gray-400' : 'text-gray-500'
                         }`}>
                           {drawingTool === 'pen' 
-                            ? 'Click and drag to draw. Share your work with Math Tutorly!' 
-                            : 'Calculator mode - Click to add math expressions'
+                            ? "Click and drag to draw. Share your work with Math Tutorly!"
+                            : "Calculator mode - Click to add math expressions"
                           }
                         </p>
                       </div>
@@ -700,7 +663,7 @@ const DemoPage: React.FC = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm break-words ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            <strong>Math Tutorly:</strong> Hello! I'm Math Tutorly, your AI math tutor. Click "Join Class" above to start a voice conversation, or type your questions here!
+                            <strong>Math Tutorly:</strong> Hello! I'm Math Tutorly, your AI math tutor. Click "Join Class" above to start a voice conversation, or type your questions here! {/* eslint-disable-line react/no-unescaped-entities */}
                           </p>
                           <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                             Just now

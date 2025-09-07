@@ -113,13 +113,13 @@ const HeroSection: React.FC<HeroSectionProps> = ({
                       </div>
                     </div>
                     
-                    <motion.p 
+                    <motion.p
                       className="text-base opacity-95 leading-relaxed mb-6"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 1, duration: 1 }}
                     >
-                      "I notice you learn better with visual examples. Let me show you this algebra problem using shapes and interactive diagrams..."
+                      "I notice you learn better with visual examples. Let me show you this algebra problem using shapes and interactive diagrams..." {/* eslint-disable-line react/no-unescaped-entities */}
                     </motion.p>
                     
                     <div className="flex items-center gap-2">

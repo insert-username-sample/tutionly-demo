@@ -1,13 +1,22 @@
 // VAPI Web SDK integration for Tuitionly
 import Vapi from '@vapi-ai/web';
 
+export interface VapiClientToServerMessage {
+  type: string;
+  message?: {
+    role: string;
+    content: string;
+  };
+  data?: any;
+}
+
 export interface VapiCallbacks {
   onSpeechStart?: () => void;
   onSpeechEnd?: () => void;
   onCallStart?: () => void;
   onCallEnd?: () => void;
   onVolumeLevel?: (volume: number) => void;
-  onMessage?: (message: any) => void;
+  onMessage?: (message: unknown) => void;
   onError?: (error: Error) => void;
 }
 
@@ -39,7 +48,7 @@ class VapiSDK {
       send: () => {},
       isMuted: () => false,
       setMuted: () => {}
-    } as any;
+    } as unknown as Vapi;
     this.callbacks = {};
   }
 
@@ -70,7 +79,7 @@ class VapiSDK {
         this.callbacks.onVolumeLevel?.(volume);
       });
 
-      this.vapi.on('message', (message: any) => {
+      this.vapi.on('message', (message: unknown) => {
         this.callbacks.onMessage?.(message);
       });
 
@@ -134,7 +143,7 @@ class VapiSDK {
     this.vapi.stop();
   }
 
-  send(message: any) {
+  send(message: VapiClientToServerMessage | any) {
     this.vapi.send(message);
   }
 
