@@ -23,10 +23,9 @@ const Navigation: React.FC<NavigationProps> = ({ className = '' }) => {
   ];
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isDark ? 'bg-gray-900/50' : 'bg-white/50'} backdrop-blur-lg border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
-      <div className={`max-w-7xl mx-auto flex items-center justify-between px-6 xl:px-0 py-4 ${className}`}>
-        {/* Logo */}
-        <motion.div
+    <nav className={`max-w-7xl mx-auto flex items-center justify-between px-6 xl:px-0 py-8 ${className}`}>
+      {/* Logo */}
+      <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6 }}
@@ -84,7 +83,6 @@ const Navigation: React.FC<NavigationProps> = ({ className = '' }) => {
           </Button>
         </div>
       </motion.div>
-      </div>
     </nav>
   );
 };

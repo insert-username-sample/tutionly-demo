@@ -11,7 +11,6 @@ interface FloatingElementProps {
   delay?: number;
   opacity?: number;
   className?: string;
-  color?: 'white' | 'blue' | 'purple' | 'green' | 'pink';
 }
 
 const FloatingElement: React.FC<FloatingElementProps> = ({
@@ -21,7 +20,6 @@ const FloatingElement: React.FC<FloatingElementProps> = ({
   delay = 0,
   opacity = 0.1,
   className = '',
-  color = 'white',
 }) => {
   const { isDark } = useTheme();
   
@@ -59,15 +57,7 @@ const FloatingElement: React.FC<FloatingElementProps> = ({
           className={`w-full h-full rounded-full ${
             isDark 
               ? 'bg-gradient-to-br from-blue-400/20 to-purple-400/20' 
-              : color === 'blue'
-              ? 'bg-gradient-to-br from-blue-200/30 to-cyan-200/30'
-              : color === 'purple'
-              ? 'bg-gradient-to-br from-purple-200/30 to-pink-200/30'
-              : color === 'green'
-              ? 'bg-gradient-to-br from-green-200/30 to-teal-200/30'
-              : color === 'pink'
-              ? 'bg-gradient-to-br from-pink-200/30 to-rose-200/30'
-              : 'bg-gradient-to-br from-gray-200/30 to-gray-300/30'
+              : 'bg-gradient-to-br from-blue-200/30 to-purple-200/30'
           }`}
         />
       )}

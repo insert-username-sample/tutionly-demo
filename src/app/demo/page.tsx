@@ -2,20 +2,17 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Play, Pause, Volume2, VolumeX, MessageSquare, BookOpen, Calculator, PenTool, Upload, FileText, Mic, MicOff, Phone, PhoneOff, Users, Moon, Sun, Download, FileDown, NotebookPen, Camera } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Volume2, VolumeX, MessageSquare, BookOpen, Calculator, PenTool, Upload, FileText, Mic, MicOff, Phone, PhoneOff, Users, Moon, Sun } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import GlassCard from '@/components/ui/GlassCard';
 import Button from '@/components/ui/Button';
 import { useTheme, useLogo } from '@/contexts/ThemeContext';
-import { configureAssistant, type AssistantConfig, type VoiceConfig } from '@/lib/assistant-config';
-import { TUTOR_PERSONALITIES, getTutorBySubject, getTopicsForSubject } from '@/lib/tutor-personalities';
 import { vapi } from '@/lib/vapi';
 
 const DemoPage: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
   const { logoSrc, logoAlt } = useLogo();
-  const [isDemoStarted, setIsDemoStarted] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isMicOn, setIsMicOn] = useState(false);
@@ -27,40 +24,21 @@ const DemoPage: React.FC = () => {
   const [aiAudioLevels, setAiAudioLevels] = useState([4, 4, 4, 4, 4]);
   const [messages, setMessages] = useState<Array<{id: string, sender: 'user' | 'ai', content: string, timestamp: string}>>([]);
   const [activeTab, setActiveTab] = useState<'live' | 'homework'>('live');
-  const [selectedSubject, setSelectedSubject] = useState('science');
-  const [selectedTopic, setSelectedTopic] = useState('');
   const [homeworkImage, setHomeworkImage] = useState<File | null>(null);
   const [chatInput, setChatInput] = useState('');
-  const [sessionNotes, setSessionNotes] = useState('');
-  const [showNotes, setShowNotes] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  
-  // Initialize default topic for selected subject
-  useEffect(() => {
-    if (!selectedTopic) {
-      const topics = getTopicsForSubject(selectedSubject);
-      setSelectedTopic(topics[0] || '');
-    }
-  }, [selectedSubject, selectedTopic]);
   
   // Whiteboard state
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawingTool, setDrawingTool] = useState<'pen' | 'calculator'>('pen');
   const [drawings, setDrawings] = useState<Array<{x: number, y: number, type: 'start' | 'draw'}>>([]);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
-  // Scroll to bottom when new messages arrive, but only if user is already near the bottom
+  // Scroll to bottom when new messages arrive (but not on initial load)
   useEffect(() => {
-    const chatContainer = chatEndRef.current?.parentElement;
-    if (chatContainer) {
-      const { scrollHeight, scrollTop, clientHeight } = chatContainer;
-      const isScrolledToBottom = scrollHeight - scrollTop <= clientHeight + 100; // 100px threshold
-      if (isScrolledToBottom) {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }
+    // Only scroll if there are messages and this isn't the initial load
+    if (messages.length > 0) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
@@ -141,8 +119,7 @@ const DemoPage: React.FC = () => {
   
   const submitToTutorly = () => {
     // Simulate sending drawing to AI for analysis
-    const tutorName = getTutorBySubject(selectedSubject).name;
-    alert(`Drawing submitted to ${tutorName} for analysis!`);
+    alert('Drawing submitted to Math Tutorly for analysis!');
   };
 
   // Render drawings on canvas
@@ -199,38 +176,30 @@ const DemoPage: React.FC = () => {
   useEffect(() => {
     vapi.setCallbacks({
       onCallStart: () => {
-        console.log('VAPI Call Started');
         setIsConnected(true);
         setIsConnecting(false);
         setIsMicOn(true);
       },
       onCallEnd: () => {
-        console.log('VAPI Call Ended');
         setIsConnected(false);
         setIsMicOn(false);
         setIsUserSpeaking(false);
         setIsAISpeaking(false);
       },
       onSpeechStart: () => {
-        console.log('User speech started');
         setIsUserSpeaking(true);
         // Generate user audio levels
         const levels = Array.from({ length: 5 }, () => Math.random() * 60 + 20);
         setUserAudioLevels(levels);
       },
       onSpeechEnd: () => {
-        console.log('User speech ended');
         setIsUserSpeaking(false);
         setUserAudioLevels([4, 4, 4, 4, 4]);
       },
       onVolumeLevel: (volume) => {
-        console.log('User volume level:', volume);
-        if (volume > 0.1) { // Lowered threshold
-          setIsUserSpeaking(true);
-          const newLevels = Array(5).fill(0).map(() => Math.random() * volume * 200);
-          setUserAudioLevels(newLevels);
-        } else {
-          setIsUserSpeaking(false);
+        if (volume > 30) {
+          const levels = Array.from({ length: 5 }, () => Math.random() * volume + 10);
+          setUserAudioLevels(levels);
         }
       },
       onMessage: (message) => {
@@ -293,61 +262,36 @@ const DemoPage: React.FC = () => {
     };
   }, []);
 
-  // Effect to handle changing the tutor
-  useEffect(() => {
-    if (isConnected) {
-      handleDisconnect();
-      setTimeout(() => {
-        handleConnectionToggle();
-      }, 1000); // Wait a second before reconnecting
-    }
-  }, [selectedSubject]);
-
-  const handleDisconnect = () => {
-    vapi.stop();
-    setIsConnected(false);
-    setIsMicOn(false);
-    
-    // Generate session notes
-    generateSessionNotes();
-    setShowNotes(true);
-  };
-
   const handleConnectionToggle = async () => {
     if (isConnected) {
-      handleDisconnect();
+      vapi.stop();
+      setIsConnected(false);
+      setIsMicOn(false);
     } else {
       setIsConnecting(true);
       try {
-        const assistantIds: Record<string, string> = {
-          math: 'f6ee185a-5dc0-4721-94a4-eba68acf525d',
-          science: '9ad04ac3-2f32-4df1-a1ce-97925446bbd4',
-          english: 'dddfa691-fbf2-46a6-b9e1-0dc1673718bb',
-          history: '2ad69ce7-de9a-4ebb-90a4-f82bed3d2eea',
-          coding: '4a8effac-25ed-4e46-8f2e-6d93c83b0a4f',
-          'social science': '70e30427-dad5-4f04-98db-51ad374375ed',
-          economics: '6b634bc3-7db2-4222-9183-77fa6d67f58e',
-        };
-
-        const assistantId = assistantIds[selectedSubject];
-
-        // Start the VAPI call with the assistant ID
-        const result = await vapi.start(assistantId);
+        // Start with your specific Math Tutorly assistant ID from VAPI dashboard
+        console.log('Attempting to connect to VAPI...');
+        const result = await vapi.start('Math Tutorly'); // Use your assistant ID if you have one
+        console.log('VAPI connection result:', result);
         
         if (result.demo) {
           console.log('Running in demo mode due to connection issues');
           setIsDemoMode(true);
         }
         if (!result.success) {
-          throw new Error(`Failed to connect to assistant`);
+          throw new Error('Failed to connect to Math Tutorly assistant');
         }
       } catch (error) {
         console.warn('Connection failed (gracefully handled):', error);
         setIsConnecting(false);
         
+        // Don't show error alert for minor issues, just log them
+        // The system will fall back to demo mode
+        
         // Only show alert for critical errors
         if (error instanceof Error && error.message.includes('critical')) {
-          let errorMessage = `Failed to connect to the assistant.`;
+          let errorMessage = 'Failed to connect to Math Tutorly.';
           if (error.message.includes('microphone')) {
             errorMessage += ' Please allow microphone access and try again.';
           } else if (error.message.includes('network')) {
@@ -383,172 +327,6 @@ const DemoPage: React.FC = () => {
       setHomeworkImage(file);
     }
   };
-
-  const generateSessionNotes = () => {
-    const tutor = getTutorBySubject(selectedSubject);
-    const sessionDate = new Date().toLocaleDateString();
-    const sessionTime = new Date().toLocaleTimeString();
-    
-    let notes = `# ${tutor.name} - Session Notes\n`;
-    notes += `**Date:** ${sessionDate}\n`;
-    notes += `**Time:** ${sessionTime}\n`;
-    notes += `**Subject:** ${tutor.subject}\n`;
-    notes += `**Topic:** ${selectedTopic || tutor.defaultTopic}\n\n`;
-    
-    notes += `## Session Summary\n`;
-    notes += `This was a live tutoring session with ${tutor.name} focusing on ${selectedTopic || tutor.defaultTopic}.\n\n`;
-    
-    if (messages.length > 0) {
-      notes += `## Conversation Highlights\n`;
-      messages.forEach((message, index) => {
-        const sender = message.sender === 'ai' ? tutor.name : 'Student';
-        notes += `**${sender} (${message.timestamp}):** ${message.content}\n\n`;
-      });
-    } else {
-      notes += `## Key Learning Points\n`;
-      notes += `- Interactive voice conversation with AI tutor\n`;
-      notes += `- Real-time question and answer session\n`;
-      notes += `- Personalized ${tutor.subject} tutoring experience\n\n`;
-    }
-    
-    notes += `## Next Steps\n`;
-    notes += `- Review the concepts discussed in this session\n`;
-    notes += `- Practice similar problems independently\n`;
-    notes += `- Schedule follow-up sessions for continued learning\n\n`;
-    
-    notes += `---\n`;
-    notes += `*Generated by Tuitionly AI - Your Personal Learning Companion*`;
-    
-    setSessionNotes(notes);
-  };
-
-  const downloadNotes = () => {
-    const blob = new Blob([sessionNotes], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tuitionly-session-notes-${new Date().toISOString().split('T')[0]}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const closeNotes = () => {
-    setShowNotes(false);
-    setSessionNotes('');
-  };
-
-  const handleCameraOpen = async () => {
-    setShowCamera(true);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-    }
-  };
-
-  const handleCameraClose = () => {
-    setShowCamera(false);
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-    }
-  };
-
-  const handleCapture = () => {
-    if (videoRef.current && canvasRef.current) {
-      const context = canvasRef.current.getContext('2d');
-      if (context) {
-        context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
-        const imageUrl = canvasRef.current.toDataURL('image/png');
-        setCapturedImage(imageUrl);
-        
-        const newMessage = {
-          id: Date.now().toString(),
-          sender: 'user' as const,
-          content: imageUrl,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        
-        setMessages(prev => [...prev, newMessage]);
-        handleCameraClose();
-      }
-    }
-  };
-
-  if (!isDemoStarted) {
-    return (
-      <main 
-        className="min-h-screen transition-all duration-300 flex items-center justify-center" 
-        style={{ 
-          backgroundColor: isDark ? 'var(--dark-bg)' : 'var(--light-bg)'
-        }}
-      >
-        <GlassCard className="p-8 max-w-2xl w-full">
-          <h2 className={`text-3xl font-bold mb-4 text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Choose Your AI Tutor
-          </h2>
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* Subject Selector */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Subject
-              </label>
-              <select
-                value={selectedSubject}
-                onChange={(e) => {
-                  setSelectedSubject(e.target.value);
-                  setSelectedTopic(''); // Reset topic when subject changes
-                }}
-                className={`w-full px-3 py-2 rounded-lg border ${
-                  isDark 
-                    ? 'bg-gray-800 border-gray-600 text-white' 
-                    : 'bg-white border-gray-300 text-gray-900'
-                } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-              >
-                {Object.entries(TUTOR_PERSONALITIES).map(([key, tutor]) => (
-                  <option key={key} value={key}>
-                    {tutor.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Topic Selector */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Topic
-              </label>
-              <select
-                value={selectedTopic}
-                onChange={(e) => setSelectedTopic(e.target.value)}
-                className={`w-full px-3 py-2 rounded-lg border ${
-                  isDark 
-                    ? 'bg-gray-800 border-gray-600 text-white' 
-                    : 'bg-white border-gray-300 text-gray-900'
-                } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-              >
-                {getTopicsForSubject(selectedSubject).map((topic) => (
-                  <option key={topic} value={topic}>
-                    {topic}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="mt-6 flex justify-center">
-            <Button variant="primary" size="lg" onClick={() => setIsDemoStarted(true)}>
-              Start Demo
-            </Button>
-          </div>
-        </GlassCard>
-      </main>
-    );
-  }
 
   return (
     <main 
@@ -632,12 +410,11 @@ const DemoPage: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="space-y-6"
+            className="grid lg:grid-cols-3 gap-8"
           >
-            <div className="grid lg:grid-cols-3 gap-8">
-              {/* Main Video Area */}
-              <div className="lg:col-span-2">
-                <GlassCard className="overflow-hidden">
+            {/* Main Video Area */}
+            <div className="lg:col-span-2">
+              <GlassCard className="overflow-hidden">
                 <div className="aspect-video bg-gradient-primary relative rounded-t-2xl">
                   {/* Interactive Connection Status */}
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -652,7 +429,7 @@ const DemoPage: React.FC = () => {
                           animate={{ rotate: 360 }}
                           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                         />
-                        <p className="text-white font-medium">Connecting to {getTutorBySubject(selectedSubject).name}...</p>
+                        <p className="text-white font-medium">Connecting to Math Tutorly...</p>
                       </motion.div>
                     ) : isConnected ? (
                       <motion.div
@@ -766,8 +543,8 @@ const DemoPage: React.FC = () => {
                       <BookOpen size={20} className="text-white" />
                     </div>
                     <div>
-                      <p className="text-white font-semibold">{getTutorBySubject(selectedSubject).name}</p>
-                      <p className="text-white/80 text-sm">{selectedTopic || getTutorBySubject(selectedSubject).defaultTopic}</p>
+                      <p className="text-white font-semibold">Math Tutorly</p>
+                      <p className="text-white/80 text-sm">AI Math Tutor - Explaining Quadratic Equations</p>
                     </div>
                   </div>
                 </div>
@@ -777,26 +554,15 @@ const DemoPage: React.FC = () => {
                   isDark ? 'bg-gray-800' : 'bg-gray-50'
                 }`}>
                   <div className="flex items-center gap-4">
-                    {!isConnected ? (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={handleConnectionToggle}
-                        disabled={isConnecting}
-                      >
-                        {isConnecting ? 'Connecting...' : 'Join Class'}
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={handleDisconnect}
-                        className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        icon={<PhoneOff size={16} />}
-                      >
-                        End Session
-                      </Button>
-                    )}
+                    <Button
+                      variant={isConnected ? "secondary" : "primary"}
+                      size="sm"
+                      onClick={handleConnectionToggle}
+                      disabled={isConnecting}
+                      className={isConnected ? "text-red-500 hover:bg-red-50" : ""}
+                    >
+                      {isConnecting ? 'Connecting...' : isConnected ? 'Disconnect' : 'Join Class'}
+                    </Button>
                     
                     <Button
                       variant="ghost"
@@ -816,28 +582,12 @@ const DemoPage: React.FC = () => {
                     icon={isMicOn ? <Mic size={20} /> : <MicOff size={20} />}
                     className={`transition-all duration-300 ${
                       isMicOn 
-                        ? 'text-white bg-green-500 border-green-500' 
+                        ? 'text-green-500 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700' 
                         : 'text-gray-500 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600'
                     } border`}
                     disabled={!isConnected}
                   >
-                    <span>{isMicOn ? 'Mic On' : 'Mic Off'}</span>
-                  </Button>
-                </div>
-                <div className="p-4 flex items-center justify-center gap-4">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleDisconnect}
-                  >
-                    Leave Session
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setIsDemoStarted(false)}
-                  >
-                    Change Subject
+                    {isMicOn ? 'Mic On' : 'Mic Off'}
                   </Button>
                 </div>
               </GlassCard>
@@ -916,7 +666,7 @@ const DemoPage: React.FC = () => {
                 {drawings.length > 0 && (
                   <div className="mt-4 flex gap-2 justify-center">
                     <Button variant="primary" onClick={submitToTutorly}>
-                      Ask {getTutorBySubject(selectedSubject).name.split(' ')[0]} Tutorly to Help
+                      Ask Tutorly to Help
                     </Button>
                     <Button variant="secondary">
                       Save Drawing
@@ -942,48 +692,43 @@ const DemoPage: React.FC = () => {
                 <div className="flex-1 p-4 overflow-y-auto">
                   {/* Chat messages */}
                   <div className="space-y-3">
-                      {messages.length === 0 ? (
-                        // Default welcome message when no real conversation
-                        <div className="flex gap-3">
-                          <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center flex-shrink-0">
-                            <span className="text-white text-sm font-semibold">{getTutorBySubject(selectedSubject).name.charAt(0)}</span>
+                    {messages.length === 0 ? (
+                      // Default welcome message when no real conversation
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-white text-sm font-semibold">M</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm break-words ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            <strong>Math Tutorly:</strong> Hello! I'm Math Tutorly, your AI math tutor. Click "Join Class" above to start a voice conversation, or type your questions here!
+                          </p>
+                          <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                            Just now
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      // Real conversation messages
+                      messages.map((message) => (
+                        <div key={message.id} className="flex gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            message.sender === 'ai' ? 'bg-gradient-primary' : 'bg-blue-500'
+                          }`}>
+                            <span className="text-white text-sm font-semibold">
+                              {message.sender === 'ai' ? 'M' : 'Y'}
+                            </span>
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm break-words ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                              <strong>{getTutorBySubject(selectedSubject).name}:</strong> Hello! I'm {getTutorBySubject(selectedSubject).name}, your AI {selectedSubject} tutor. Click "Join Class" above to start a voice conversation, or type your questions here about {selectedTopic || getTutorBySubject(selectedSubject).defaultTopic}!
+                              <strong>{message.sender === 'ai' ? 'Math Tutorly' : 'You'}:</strong> {message.content}
                             </p>
                             <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                              Just now
+                              {message.timestamp}
                             </span>
                           </div>
                         </div>
-                      ) : (
-                        // Real conversation messages
-                        messages.map((message) => (
-                          <div key={message.id} className="flex gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                              message.sender === 'ai' ? 'bg-gradient-primary' : 'bg-blue-500'
-                            }`}>
-                              <span className="text-white text-sm font-semibold">
-                                {message.sender === 'ai' ? getTutorBySubject(selectedSubject).name.charAt(0) : 'Y'}
-                              </span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className={`text-sm break-words ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                <strong>{message.sender === 'ai' ? getTutorBySubject(selectedSubject).name : 'You'}:</strong>
-                                {message.content.startsWith('data:image') ? (
-                                  <img src={message.content} alt="Captured" className="mt-2 rounded-lg" />
-                                ) : (
-                                  ` ${message.content}`
-                                )}
-                              </div>
-                              <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                {message.timestamp}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      )}
+                      ))
+                    )}
                     <div ref={chatEndRef} />
                   </div>
                 </div>
@@ -1014,20 +759,10 @@ const DemoPage: React.FC = () => {
                     >
                       Send
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      icon={<Camera size={16} />}
-                      onClick={handleCameraOpen}
-                      disabled={!isConnected}
-                    >
-                      {''}
-                    </Button>
                   </div>
                 </div>
               </GlassCard>
             </div>
-          </div>
           </motion.div>
         )}
 
@@ -1142,147 +877,6 @@ const DemoPage: React.FC = () => {
                 </motion.div>
               )}
             </GlassCard>
-          </motion.div>
-        )}
-
-        {/* Camera Modal */}
-        {showCamera && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={handleCameraClose}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className={`max-w-4xl w-full rounded-2xl overflow-hidden ${
-                isDark ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-200'
-              } shadow-2xl`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-6">
-                <video ref={videoRef} autoPlay className="w-full rounded-lg" />
-                <canvas ref={canvasRef} className="hidden" />
-              </div>
-              <div className="p-6 flex justify-center">
-                <Button variant="primary" size="lg" onClick={handleCapture}>
-                  Capture
-                </Button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {/* Session Notes Modal */}
-        {showNotes && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={closeNotes}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className={`max-w-4xl w-full max-h-[80vh] rounded-2xl overflow-hidden ${
-                isDark ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-200'
-              } shadow-2xl`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className={`p-6 border-b ${
-                isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'
-              }`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
-                      <NotebookPen size={20} className="text-white" />
-                    </div>
-                    <div>
-                      <h3 className={`text-xl font-bold ${
-                        isDark ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        Session Notes Generated
-                      </h3>
-                      <p className={`text-sm ${
-                        isDark ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        Your learning session with {getTutorBySubject(selectedSubject).name}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={downloadNotes}
-                      icon={<Download size={16} />}
-                    >
-                      Download Notes
-                    </Button>
-                    <button
-                      onClick={closeNotes}
-                      className={`p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                        isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Modal Content */}
-              <div className="p-6 overflow-y-auto max-h-[60vh]">
-                <div className={`prose max-w-none ${
-                  isDark ? 'prose-invert' : ''
-                }`}>
-                  <div className={`whitespace-pre-wrap font-mono text-sm leading-relaxed ${
-                    isDark ? 'text-gray-300' : 'text-gray-700'
-                  }`}>
-                    {sessionNotes}
-                  </div>
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className={`p-6 border-t ${
-                isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'
-              }`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileDown size={16} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
-                    <span className={`text-sm ${
-                      isDark ? 'text-gray-400' : 'text-gray-600'
-                    }`}>
-                      Notes will be saved as Markdown format
-                    </span>
-                  </div>
-                  <div className="flex gap-3">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={closeNotes}
-                    >
-                      Close
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={downloadNotes}
-                      icon={<Download size={16} />}
-                    >
-                      Download
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
           </motion.div>
         )}
       </div>

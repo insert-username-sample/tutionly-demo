@@ -20,12 +20,12 @@ const HeroSection: React.FC<HeroSectionProps> = ({
   const { isDark } = useTheme();
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
       {/* Animated background elements */}
-      <FloatingElement size="lg" position="top-left" delay={0} opacity={isDark ? 0.1 : 0.2} color={isDark ? 'white' : 'blue'} />
-      <FloatingElement size="md" position="top-right" delay={1} opacity={isDark ? 0.08 : 0.15} color={isDark ? 'white' : 'purple'} />
-      <FloatingElement size="xl" position="bottom-left" delay={2} opacity={isDark ? 0.06 : 0.1} color={isDark ? 'white' : 'green'} />
-      <FloatingElement size="sm" position="bottom-right" delay={0.5} opacity={isDark ? 0.12 : 0.25} color={isDark ? 'white' : 'pink'} />
+      <FloatingElement size="lg" position="top-left" delay={0} opacity={0.1} />
+      <FloatingElement size="md" position="top-right" delay={1} opacity={0.08} />
+      <FloatingElement size="xl" position="bottom-left" delay={2} opacity={0.06} />
+      <FloatingElement size="sm" position="bottom-right" delay={0.5} opacity={0.12} />
       
       <div className="max-w-7xl mx-auto px-6 xl:px-0 py-8 relative z-10">
         <div className="grid lg:grid-cols-12 gap-16 items-center">

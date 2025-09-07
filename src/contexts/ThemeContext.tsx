@@ -26,11 +26,19 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>('dark');
+  const [theme, setThemeState] = useState<Theme>('light');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setThemeState('dark');
+    // Check if user has a saved preference
+    const savedTheme = localStorage.getItem('tuitionly-theme') as Theme;
+    if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
+      setThemeState(savedTheme);
+    } else {
+      // Default to system preference
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setThemeState(systemPrefersDark ? 'dark' : 'light');
+    }
     setMounted(true);
   }, []);
 

@@ -37,9 +37,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="icon" href="/tutionly favcon.png" />
-      </head>
       <body
         className={`${inter.variable} ${poppins.variable} ${robotoMono.variable} antialiased`}
       >
