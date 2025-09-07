@@ -1,0 +1,28 @@
+name = "tuitionly-modern"
+compatibility_date = "2024-09-01"
+
+[env.production]
+routes = [
+  { pattern = "/*", zone_name = "tuitionly.app" }
+]
+
+[[pages_build_config]]
+# Build command is handled by Next.js
+build_command = "npm run build"
+# The output directory for static pages
+destination_dir = ".next/static"
+# The source directory
+source_dir = "."
+
+# Environment variables for production
+[vars]
+NODE_VERSION = "18"
+
+# Pages configuration
+[[pages_build_output]]
+# Output files
+files = [
+  ".next/static/**/*",
+  ".next/server/**/*",
+  "!.next/cache/**"
+]

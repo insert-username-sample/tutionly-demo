@@ -6,7 +6,12 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "preview": "next start",
+    "cf-deploy": "wrangler pages deploy .next --compatibility-date=2024-09-01",
+    "cf-dev": "wrangler pages dev .next",
+    "cf-login": "wrangler auth login",
+    "cf-production": "npm run build && wrangler pages deploy .next --branch main"
   },
   "dependencies": {
     "react": "19.1.0",
